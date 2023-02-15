@@ -47,23 +47,20 @@ class DBStorage:
         """
            returns a dictionary of all objects
         """
+        if not self.__session:
+            self.reload()
         obj_dict = {}
 
         if type(cls) == str:
             cls = DBStorage.CNC.get(cls, None)
 
         if cls:
-            a_query = self.__session.query(cls)
-            for obj in a_query:
-                obj_ref = "{}.{}".format(type(obj).__name__, obj.id)
-                obj_dict[obj_ref] = obj
-            return obj_dict
-
-        for c in DBStorage.CNC.values():
-            a_query = self.__session.query(c)
-            for obj in a_query:
-                obj_ref = "{}.{}".format(type(obj).__name__, obj.id)
-                obj_dict[obj_ref] = obj
+            for obj in self.__session.query(cls):
+                obj_dict[obj.__class__.__name__ + '.' + obj.id] = obj
+        else:
+            for c in DBStorage.CNC.values():
+                for obj in self.__session.query(cls):
+                    obj_dict[obj.__class__.__name__ + '.' + obj.id] = obj
         return obj_dict
 
     def new(self, obj):
@@ -124,14 +121,23 @@ class DBStorage:
         """
             retrieves one object based on class name and id
         """
-        if cls and id:
-            fetch = "{}.{}".format(cls, id)
-            all_obj = self.all(cls)
-            return all_obj.get(fetch)
-        return None
+        if cls is not None and type(cls) is str and id is not None and\
+           type(id) is str and cls in DBStorage.CNC:
+            cls = DBStorage.CNC[cls]
+            result = self.__session.query(cls).filter(cls.id == id).first()
+            return result
+        else:
+            None
 
     def count(self, cls=None):
         """
             returns the count of all objects in storage
         """
-        return (len(self.all(cls)))
+        total = 0
+        if type(cls) == str and cls in DBStorage.CNC:
+            cls = DBStorage.CNC[cls]
+            total = self.__session.query(cls).count()
+        elif cls is None:
+            for cls in DBStorage.CNC.values():
+                total += self.__session.query(cls).count()
+        return total
