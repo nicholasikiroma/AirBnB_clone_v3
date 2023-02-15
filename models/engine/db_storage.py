@@ -7,7 +7,8 @@ import os
 from sqlalchemy import create_engine, MetaData
 from sqlalchemy.orm import sessionmaker, scoped_session
 from models.base_model import Base
-from models import base_model, amenity, city, place, review, state, user
+from models import base_model, amenity, city, place, review, user
+from models.state import State
 
 
 class DBStorage:
@@ -19,7 +20,7 @@ class DBStorage:
         'City': city.City,
         'Place': place.Place,
         'Review': review.Review,
-        'State': state.State,
+        'State': State,
         'User': user.User
     }
 
@@ -47,8 +48,12 @@ class DBStorage:
            returns a dictionary of all objects
         """
         obj_dict = {}
-        if cls is not None:
-            a_query = self.__session.query(DBStorage.CNC[cls])
+
+        if type(cls) == str:
+            cls = DBStorage.CNC.get(cls, None)
+
+        if cls:
+            a_query = self.__session.query(cls)
             for obj in a_query:
                 obj_ref = "{}.{}".format(type(obj).__name__, obj.id)
                 obj_dict[obj_ref] = obj
